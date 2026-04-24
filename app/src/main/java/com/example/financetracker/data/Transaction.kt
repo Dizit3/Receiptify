@@ -22,17 +22,18 @@ data class ReceiptItem(
 )
 
 class Converters {
+    companion object {
+        private val gson = Gson()
+        private val type = object : TypeToken<List<ReceiptItem>>() {}.type
+    }
+
     @TypeConverter
     fun fromReceiptItemList(value: List<ReceiptItem>): String {
-        val gson = Gson()
-        val type = object : TypeToken<List<ReceiptItem>>() {}.type
         return gson.toJson(value, type)
     }
 
     @TypeConverter
     fun toReceiptItemList(value: String): List<ReceiptItem> {
-        val gson = Gson()
-        val type = object : TypeToken<List<ReceiptItem>>() {}.type
         return gson.fromJson(value, type)
     }
 }
