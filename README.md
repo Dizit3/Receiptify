@@ -1,0 +1,47 @@
+# Offline Personal Finance Tracker
+
+Welcome to the Offline Personal Finance Tracker! This Android application is designed to securely and efficiently manage your financial records entirely on-device, prioritizing your privacy.
+
+## Features
+
+- **100% On-Device AI:** Analyzes receipts using the **Gemma-4-E2B-it** edge model directly on your device.
+- **Multimodal Processing:** No need for traditional OCR APIs (like ML Kit) or cloud services. The raw receipt image and prompt are fed right into the local model.
+- **Offline First:** Your data never leaves your device. All processing and storage happen locally.
+- **Data Validation:** A Review Screen allows you to verify the extracted information before saving it to your records.
+
+## Architecture & Tech Stack
+
+- **Language:** Kotlin
+- **UI Framework:** Jetpack Compose (Material 3)
+- **Architecture:** MVVM (Model-View-ViewModel) with Coroutines and Flow
+- **Local Database:** Room Database
+- **Offline ML:** LiteRT-LM / MediaPipe GenAI for local multimodal LLM inference
+
+## Data Entry Flow
+
+1. **Capture:** Take a picture of your receipt or select one from your gallery.
+2. **Analyze:** The image and a prompt are sent to the local Gemma 4 E2B model.
+3. **Review:** The model returns a parsed JSON with shop name, date, total amount, and items. You review this data on the Review Screen.
+4. **Save:** Once validated, the data is saved securely to the Room Database.
+
+## Setup Instructions
+
+### Prerequisites
+- Android Studio
+- JDK 17
+- An Android device or emulator (Note: On-device inference performs best on physical devices with decent hardware).
+
+### Model Installation
+This app requires the `gemma-4-E2B-it-int4` model file to function. Due to size constraints, it is not bundled in the repository.
+
+1. Obtain the `gemma-4-E2B-it-int4.bin` or `.task` model file.
+2. Place the model file in the following directory within the project:
+   `app/src/main/assets/`
+
+   *(Note: For production, it's recommended to download the model at runtime to internal storage due to APK size limits).*
+
+### Build and Run
+1. Clone the repository.
+2. Open the project in Android Studio.
+3. Sync the project with Gradle files.
+4. Run the application on your target device or emulator.
