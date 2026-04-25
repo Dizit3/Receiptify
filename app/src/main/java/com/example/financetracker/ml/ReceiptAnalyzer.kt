@@ -46,7 +46,10 @@ class ReceiptAnalyzer(private val context: Context, private val modelPath: Strin
      */
     suspend fun analyzeReceipt(bitmap: Bitmap): String? = withContext(Dispatchers.IO) {
         try {
-            val prompt = "Analyze this receipt image. Extract the data and return strictly a JSON object containing: shop_name (String), date (YYYY-MM-DD), total_amount (Double), and items (Array of objects with name (String) and price (Double)). Do not add markdown or explanations."
+            val prompt = "Analyze this receipt image. Extract the data and return strictly a JSON object. " +
+                         "Use the following snake_case keys: 'shop_name' (String), 'date' (YYYY-MM-DD), " +
+                         "'total_amount' (Double), and 'items' (Array of objects with 'name' (String) and 'price' (Double)). " +
+                         "Return only the raw JSON. Do not add markdown tags like ```json or any explanations."
             
             try {
                 // Convert Android Bitmap to MediaPipe MPImage
