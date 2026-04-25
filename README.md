@@ -48,7 +48,7 @@ graph TD
 - [x] Transaction History List
 - [ ] Receipt Capture (Camera) **(Stub: FAB button exists but inactive)**
 - [ ] Gallery Image Selection **(Not implemented)**
-- [ ] Review Screen (Data Validation) **(Not implemented)**
+- [ ] Review Screen (Data Validation) **(Planned: see docs/plans/review_screen.md)**
 - [ ] Settings Screen **(Not implemented)**
 
 #### DevOps & Delivery
