@@ -2,8 +2,21 @@ name: Android CI
 
 on:
   push:
+    branches: [ "main", "antigravity-dev" ]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
   pull_request:
     branches: [ "main" ]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
 
 jobs:
   build:
