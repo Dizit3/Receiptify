@@ -42,7 +42,7 @@ graph TD
 #### Core Engine
 - [x] On-Device AI Integration (Gemma-4-E2B)
 - [x] Local Storage (Room Database)
-- [ ] Model Auto-downloading System
+- [ ] Model Auto-downloading System **(Planned: see docs/plans/model_management.md)**
 
 #### User Interface
 - [x] Transaction History List
