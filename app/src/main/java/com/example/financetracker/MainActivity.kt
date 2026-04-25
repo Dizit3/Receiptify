@@ -12,7 +12,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -21,7 +26,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financetracker.data.AppDatabase
 import com.example.financetracker.data.Transaction
 import com.example.financetracker.data.TransactionDao
+import com.example.financetracker.ml.DownloadStatus
+import com.example.financetracker.ml.ModelManager
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 
 class MainViewModel(private val transactionDao: TransactionDao) : ViewModel() {
     val transactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
@@ -56,6 +64,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = viewModel(factory = factory)) {
     val transactions by viewModel.transactions.collectAsState(initial = emptyList())
+    val context = LocalContext.current
+    val modelManager = remember { ModelManager(context) }
+    val isModelDownloaded = remember { androidx.compose.runtime.mutableStateOf(modelManager.isModelDownloaded()) }
+    val showDownloadOverlay = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val downloadStatus by modelManager.downloadStatus.collectAsState(initial = DownloadStatus.Idle)
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -68,15 +82,90 @@ fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = 
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Implement add transaction */ }) {
+            FloatingActionButton(onClick = {
+                if (isModelDownloaded.value) {
+                    /* TODO: Implement add transaction */
+                } else {
+                    showDownloadOverlay.value = true
+                }
+            }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
             }
         }
     ) { paddingValues ->
-        TransactionList(
-            transactions = transactions,
-            modifier = Modifier.padding(paddingValues)
-        )
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            TransactionList(
+                transactions = transactions,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            if (showDownloadOverlay.value && !isModelDownloaded.value) {
+                LaunchedEffect(downloadStatus) {
+                    if (downloadStatus is DownloadStatus.Downloaded) {
+                        isModelDownloaded.value = true
+                        showDownloadOverlay.value = false
+                    }
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "Downloading AI Model (~450MB). Please stay on this screen...",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        when (val status = downloadStatus) {
+                            is DownloadStatus.Idle -> {
+                                Button(onClick = {
+                                    coroutineScope.launch {
+                                        modelManager.downloadModel()
+                                    }
+                                }) {
+                                    Text("Start Download")
+                                }
+                            }
+                            is DownloadStatus.Downloading -> {
+                                LinearProgressIndicator(
+                                    progress = status.progress,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("${(status.progress * 100).toInt()}%")
+                            }
+                            is DownloadStatus.Downloaded -> {
+                                // Handled in LaunchedEffect
+                            }
+                            is DownloadStatus.Error -> {
+                                Text("Error: ${status.message}", color = MaterialTheme.colorScheme.error)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    coroutineScope.launch {
+                                        modelManager.downloadModel()
+                                    }
+                                }) {
+                                    Text("Retry Download")
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+                        OutlinedButton(onClick = { showDownloadOverlay.value = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
