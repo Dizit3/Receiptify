@@ -46,16 +46,21 @@ graph TD
 
 #### User Interface
 - [x] Transaction History List
-- [ ] Receipt Capture (Camera)
-- [ ] Gallery Image Selection
-- [ ] Review Screen (Data Validation)
-- [ ] Settings Screen
+- [ ] Receipt Capture (Camera) **(Stub: FAB button exists but inactive)**
+- [ ] Gallery Image Selection **(Not implemented)**
+- [ ] Review Screen (Data Validation) **(Not implemented)**
+- [ ] Settings Screen **(Not implemented)**
 
 #### DevOps & Delivery
 - [x] GitHub Actions CI/CD
 - [x] Automated Releases (Latest & Pre-releases)
 - [x] Obtainium Support
 - [x] CI Path-based Optimization
+
+## Current Stubs & Limitations
+- **Add Transaction Button:** The Floating Action Button (FAB) on the main screen is currently a UI placeholder.
+- **Model Management:** The Gemma model must be manually placed in `app/src/main/assets/`. Automatic downloading or external storage management is not yet implemented.
+- **Scanning Logic:** While the `ReceiptAnalyzer` class is ready, it is not yet connected to any UI flow.
 
 ## Architecture & Tech Stack
 
