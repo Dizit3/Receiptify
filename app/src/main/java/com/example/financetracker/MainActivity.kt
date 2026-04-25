@@ -104,7 +104,7 @@ class MainActivity : ComponentActivity() {
                                 initialTransaction = transaction,
                                 onSave = { updatedTransaction ->
                                     scope.launch {
-                                        transactionDao.insert(updatedTransaction)
+                                        transactionDao.insertTransaction(updatedTransaction)
                                         currentScreen = Screen.History
                                     }
                                 },
@@ -149,7 +149,7 @@ fun FinanceTrackerApp(
             coroutineScope.launch {
                 isAnalyzing = true
                 try {
-                    val modelPath = modelManager.getModelPath()
+                    val modelPath = modelManager.getModelFile().absolutePath
                     val analyzer = com.example.financetracker.ml.ReceiptAnalyzer(context, modelPath)
                     val jsonResult = analyzer.analyzeReceipt(bitmap)
                     analyzer.close()
