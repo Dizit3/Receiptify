@@ -21,7 +21,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financetracker.data.AppDatabase
 import com.example.financetracker.data.Transaction
 import com.example.financetracker.data.TransactionDao
+import com.example.financetracker.ui.ReviewScreen
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
+enum class Screen {
+    History, Review
+}
 
 class MainViewModel(private val transactionDao: TransactionDao) : ViewModel() {
     val transactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
@@ -46,7 +56,44 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MaterialTheme {
-                FinanceTrackerApp(factory)
+                var currentScreen by remember { mutableStateOf(Screen.History) }
+                var pendingTransaction by remember { mutableStateOf<Transaction?>(null) }
+                val scope = rememberCoroutineScope()
+
+                when (currentScreen) {
+                    Screen.History -> {
+                        FinanceTrackerApp(
+                            factory = factory,
+                            onAddTransaction = {
+                                // Placeholder: In real app, this triggers AI analysis
+                                // For now, we mock a transition to ReviewScreen
+                                pendingTransaction = com.example.financetracker.data.Transaction(
+                                    shopName = "New Store",
+                                    date = "2024-04-25",
+                                    totalAmount = 0.0,
+                                    items = emptyList()
+                                )
+                                currentScreen = Screen.Review
+                            }
+                        )
+                    }
+                    Screen.Review -> {
+                        pendingTransaction?.let { transaction ->
+                            ReviewScreen(
+                                initialTransaction = transaction,
+                                onSave = { updatedTransaction ->
+                                    scope.launch {
+                                        transactionDao.insert(updatedTransaction)
+                                        currentScreen = Screen.History
+                                    }
+                                },
+                                onCancel = {
+                                    currentScreen = Screen.History
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -54,7 +101,11 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = viewModel(factory = factory)) {
+fun FinanceTrackerApp(
+    factory: MainViewModelFactory, 
+    viewModel: MainViewModel = viewModel(factory = factory),
+    onAddTransaction: () -> Unit
+) {
     val transactions by viewModel.transactions.collectAsState(initial = emptyList())
 
     Scaffold(
@@ -68,7 +119,7 @@ fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = 
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Implement add transaction */ }) {
+            FloatingActionButton(onClick = onAddTransaction) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
             }
         }
