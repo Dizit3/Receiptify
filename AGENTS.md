@@ -41,3 +41,15 @@ This file contains important context and instructions for AI agents working on t
 - **Delivery Method:** The project uses **GitHub Releases** for app delivery to the user's device.
 - **Obtainium:** The user uses the **Obtainium** Android app to track this repository.
 - **CI/CD:** Every push to the `main` branch triggers a GitHub Action that builds the APK and creates a new release. **Do not** use Telegram Bot API or other external messaging services for delivery unless explicitly requested.
+
+## Multi-Agent Collaboration (Antigravity & Jules)
+
+- **Roles:** 
+    - **Antigravity (Local):** Responsible for high-level planning, architecture, documentation maintenance, and coordinating with Jules.
+    - **Jules (Remote):** Responsible for executing large coding tasks in the cloud.
+- **Workflow:** 
+    1. Antigravity creates an implementation plan in `docs/plans/`.
+    2. Antigravity triggers a Jules session using the `jules` CLI.
+    3. Jules implements the changes and creates a Pull Request or a branch.
+    4. Antigravity reviews and pulls the changes locally via `jules teleport` or `jules remote pull`.
+- **Communication:** Agents should check `docs/plans/` and the `task.md` roadmap to ensure they are working on the correct priorities.
