@@ -22,9 +22,45 @@ import com.example.financetracker.data.AppDatabase
 import com.example.financetracker.data.Transaction
 import com.example.financetracker.data.TransactionDao
 import kotlinx.coroutines.flow.Flow
+import android.net.Uri
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Log
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import java.io.File
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MainViewModel(private val transactionDao: TransactionDao) : ViewModel() {
     val transactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
+
+    fun onImageSelected(uri: Uri, context: Context) {
+        try {
+            val bitmap: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                ImageDecoder.decodeBitmap(source)
+            } else {
+                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            }
+            Log.i("MainViewModel", "Successfully loaded bitmap from URI: $uri, dimensions: ${bitmap.width}x${bitmap.height}")
+            // TODO: Pass bitmap to ReceiptAnalyzer state
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "Error loading bitmap from URI: $uri", e)
+        }
+    }
 }
 
 class MainViewModelFactory(private val transactionDao: TransactionDao) : ViewModelProvider.Factory {
@@ -56,6 +92,66 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = viewModel(factory = factory)) {
     val transactions by viewModel.transactions.collectAsState(initial = emptyList())
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    var tempImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var tempImageUri = tempImageUriString?.let { Uri.parse(it) }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onImageSelected(uri, context)
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempImageUri != null) {
+            viewModel.onImageSelected(tempImageUri!!, context)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val storageDir = context.cacheDir
+            val imageFile = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+            tempImageUriString = uri.toString()
+            cameraLauncher.launch(uri)
+        } else {
+            Log.w("MainActivity", "Camera permission denied")
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Add Transaction") },
+            text = { Text("Choose a method to add a receipt.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                }) {
+                    Text("Take Photo")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    Text("Gallery")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -68,7 +164,7 @@ fun FinanceTrackerApp(factory: MainViewModelFactory, viewModel: MainViewModel = 
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* TODO: Implement add transaction */ }) {
+            FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
             }
         }
