@@ -142,17 +142,34 @@ fun FinanceTrackerApp(
     var tempImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var tempImageUri = tempImageUriString?.let { Uri.parse(it) }
 
+    var isAnalyzing by remember { mutableStateOf(false) }
+
     val handleImage = { uri: Uri ->
-        viewModel.onImageSelected(uri, context) { _ ->
-            // In a real app, this would trigger ReceiptAnalyzer
-            // For now, we mock a transaction result
-            val mockTransaction = Transaction(
-                shopName = "Recognized Shop",
-                date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
-                totalAmount = 12.34,
-                items = emptyList()
-            )
-            onResultReady(mockTransaction)
+        viewModel.onImageSelected(uri, context) { bitmap ->
+            coroutineScope.launch {
+                isAnalyzing = true
+                try {
+                    val modelPath = modelManager.getModelPath()
+                    val analyzer = com.example.financetracker.ml.ReceiptAnalyzer(context, modelPath)
+                    val jsonResult = analyzer.analyzeReceipt(bitmap)
+                    analyzer.close()
+
+                    if (jsonResult != null) {
+                        // Parse JSON result using Gson
+                        val gson = com.google.gson.Gson()
+                        val analyzedTransaction = gson.fromJson(jsonResult, Transaction::class.java)
+                        onResultReady(analyzedTransaction)
+                    } else {
+                        Log.e("MainActivity", "AI analysis returned null")
+                        // Fallback to empty transaction on error
+                        onResultReady(Transaction(shopName = "Unknown", date = "", totalAmount = 0.0, items = emptyList()))
+                    }
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error during AI analysis", e)
+                } finally {
+                    isAnalyzing = false
+                }
+            }
         }
     }
 
@@ -302,6 +319,27 @@ fun FinanceTrackerApp(
                         OutlinedButton(onClick = { showDownloadOverlay.value = false }) {
                             Text("Cancel")
                         }
+                    }
+                }
+            }
+
+            // AI Analysis Overlay
+            if (isAnalyzing) {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Analyzing Receipt with AI...",
+                            style = MaterialTheme.typography.titleMedium
+                        )
                     }
                 }
             }
