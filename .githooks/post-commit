@@ -1,4 +1,16 @@
 #!/bin/sh
 
-# Push to GitHub in the background to trigger GitHub Actions (which creates the Release for Obtainium)
+# Get the last commit message
+MSG=$(git log -1 --pretty=%B)
+
+# Check if [deploy] is in the message
+if echo "$MSG" | grep -q "\[deploy\]"; then
+    echo "🚀 [deploy] detected! Running fast local build and upload..."
+    # Run powershell script
+    powershell.exe -ExecutionPolicy Bypass -File scripts/fast_deploy.ps1
+else
+    echo "ℹ️ No [deploy] tag found. Standard push only."
+fi
+
+# Always push to keep the remote branch in sync
 git push origin HEAD &
