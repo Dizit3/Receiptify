@@ -35,6 +35,7 @@ import com.example.financetracker.data.Transaction
 import com.example.financetracker.data.TransactionDao
 import com.example.financetracker.ml.DownloadStatus
 import com.example.financetracker.ml.ModelManager
+import com.example.financetracker.ui.AIStatusBar
 import com.example.financetracker.ui.ReviewScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -155,14 +156,19 @@ fun FinanceTrackerApp(
                     analyzer.close()
 
                     if (jsonResult != null) {
-                        // Parse JSON result using Gson
-                        val gson = com.google.gson.Gson()
-                        val analyzedTransaction = gson.fromJson(jsonResult, Transaction::class.java)
-                        onResultReady(analyzedTransaction)
+                        try {
+                            // Parse JSON result using Gson
+                            val gson = com.google.gson.Gson()
+                            val cleanedJson = jsonResult.trim().removeSurrounding("```json", "```").trim()
+                            val analyzedTransaction = gson.fromJson(cleanedJson, Transaction::class.java)
+                            onResultReady(analyzedTransaction)
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Error parsing AI JSON response: $jsonResult", e)
+                            onResultReady(Transaction(shopName = "Parse Error", date = "", totalAmount = 0.0, items = emptyList()))
+                        }
                     } else {
                         Log.e("MainActivity", "AI analysis returned null")
-                        // Fallback to empty transaction on error
-                        onResultReady(Transaction(shopName = "Unknown", date = "", totalAmount = 0.0, items = emptyList()))
+                        onResultReady(Transaction(shopName = "Analysis Failed", date = "", totalAmount = 0.0, items = emptyList()))
                     }
                 } catch (e: Exception) {
                     Log.e("MainActivity", "Error during AI analysis", e)
@@ -231,13 +237,19 @@ fun FinanceTrackerApp(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Finance Tracker") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary,
+            Column {
+                TopAppBar(
+                    title = { Text("Finance Tracker") },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    )
                 )
-            )
+                AIStatusBar(
+                    downloadStatus = downloadStatus,
+                    isAnalyzing = isAnalyzing
+                )
+            }
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { 
