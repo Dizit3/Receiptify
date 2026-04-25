@@ -2,6 +2,11 @@
 
 This file contains important context and instructions for AI agents working on this project.
 
+## Documentation Maintenance
+
+- **Stay Up-to-Date:** Agents **MUST** always verify the relevance of `README.md` and `AGENTS.md` after making changes. If a change impacts the project's features, architecture, or workflow, update the documentation accordingly.
+- **Mermaid Diagrams:** If the feature set changes, ensure the Mermaid graph in `README.md` is updated to reflect the current state (distinguishing between implemented and planned features).
+
 ## Core Directives
 
 1. **Strictly Offline Processing:** The primary goal of this app is to be a 100% offline personal finance tracker. **Do not** introduce any cloud-based APIs, external network calls for data processing, or traditional OCR services (like ML Kit) for receipt analysis.
