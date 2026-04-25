@@ -2,13 +2,15 @@ name: Android CI
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
 
     steps:
     - uses: actions/checkout@v4
@@ -31,3 +33,12 @@ jobs:
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/app-debug.apk
+
+    - name: Send APK to Telegram
+      if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_TO != ''
+      uses: appleboy/telegram-action@master
+      with:
+        to: ${{ env.TELEGRAM_TO }}
+        token: ${{ env.TELEGRAM_TOKEN }}
+        document: app/build/outputs/apk/debug/app-debug.apk
+        message: "New Debug APK build is ready!"

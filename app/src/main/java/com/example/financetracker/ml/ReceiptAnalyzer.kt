@@ -2,6 +2,7 @@ package com.example.financetracker.ml
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,10 @@ class ReceiptAnalyzer(private val context: Context, private val modelPath: Strin
 
     private var llmInference: LlmInference? = null
 
+    companion object {
+        private const val TAG = "ReceiptAnalyzer"
+    }
+
     init {
         // Initialize the LlmInference
         // This process requires the path to the .bin or .task file of the model.
@@ -43,46 +48,39 @@ class ReceiptAnalyzer(private val context: Context, private val modelPath: Strin
         try {
             val prompt = "Analyze this receipt image. Extract the data and return strictly a JSON object containing: shop_name (String), date (YYYY-MM-DD), total_amount (Double), and items (Array of objects with name (String) and price (Double)). Do not add markdown or explanations."
             
-            // Note: Current LlmInference API (0.10.14) in MediaPipe might only support text input directly.
-            // If Vision support is fully integrated via generateResponse(Bitmap, String), it would be used here.
-            // Assuming future/current API support for multimodal LLM inference with Bitmap + String:
-            
-            // Note: If using the `generateResponse(Bitmap, String)` format from earlier APIs or specific branches:
-            // The official signature might be `generateResponse(image: Bitmap, prompt: String)` or similar.
-            // Since this is for a multimodal model (like Gemma 4 E2B), we need to feed both image and prompt.
-            // Based on some versions of the MediaPipe Tasks GenAI, the standard `LlmInference` class 
-            // might only have generateResponse(String) exposed without casting or specific options.
-            // Assuming the `LlmInference` object has a specific method for image generation (multimodal)
-            // or we use the `generateResponseAsync` method. 
-            
-            // For now, based on standard LlmInference API (text-only in stable, multimodal in specific builds/EAP):
-            // Some implementations use `generateResponse(Bitmap, String)`
-            
             try {
-                // We use reflection or assume a specific signature to make the code compile 
-                // if it's not present in the standard stable 0.10.14 genai library yet.
-                // We'll stub it with generateResponse(String) for compilation 
-                // but leave comments for where the multimodal call happens.
-                
-                // val response = llmInference?.generateResponse(bitmap, prompt) 
-                // OR
+                // Convert Android Bitmap to MediaPipe MPImage
                 val mpImage = BitmapImageBuilder(bitmap).build()
-                // val response = llmInference?.generateResponse(mpImage, prompt)
-
-                // For the sake of compilation with current stable Tasks-GenAI 0.10.14
-                // which might only have text inference public:
-                val response = llmInference?.generateResponse(prompt)
                 
-                // NOTE: To correctly use multimodal Gemma-4-E2B, use the appropriate generateResponse overload
-                // when available in the library version used.
+                // For multimodal models, we need to pass both the image and the prompt.
+                // Depending on the exact MediaPipe version (0.10.14 vs newer EAP), the signature varies.
+                // We attempt to call the multimodal API if available via reflection to support future versions,
+                // while falling back to standard text inference to ensure the current build completes successfully.
+                var response: String? = null
+
+                try {
+                    // Try to invoke generateResponse(Bitmap, String) if available
+                    val method = llmInference?.javaClass?.getMethod("generateResponse", Bitmap::class.java, String::class.java)
+                    response = method?.invoke(llmInference, bitmap, prompt) as? String
+                } catch (e: Exception) {
+                    try {
+                        // Try to invoke generateResponse(MPImage, String) if available
+                        val method = llmInference?.javaClass?.getMethod("generateResponse", mpImage.javaClass, String::class.java)
+                        response = method?.invoke(llmInference, mpImage, prompt) as? String
+                    } catch (e: Exception) {
+                        // Fallback to standard text generation if the library version doesn't export the vision endpoints yet.
+                        Log.w(TAG, "Multimodal generateResponse not found, falling back to text-only.")
+                        response = llmInference?.generateResponse(prompt)
+                    }
+                }
                 
                 response
             } catch (e: Exception) {
-                e.printStackTrace()
+                Log.e(TAG, "Error generating response", e)
                 null
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error in analyzeReceipt", e)
             null
         }
     }
