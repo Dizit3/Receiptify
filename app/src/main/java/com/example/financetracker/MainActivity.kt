@@ -33,6 +33,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.financetracker.data.AppDatabase
 import com.example.financetracker.data.Transaction
 import com.example.financetracker.data.TransactionDao
+import com.example.financetracker.ml.DownloadStatus
+import com.example.financetracker.ml.ModelManager
 import com.example.financetracker.ui.ReviewScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -126,9 +128,17 @@ fun FinanceTrackerApp(
     onResultReady: (Transaction) -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState(initial = emptyList())
-    var showDialog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
+    // Model Management State
+    val modelManager = remember { ModelManager(context) }
+    val isModelDownloaded = remember { mutableStateOf(modelManager.isModelDownloaded()) }
+    val showDownloadOverlay = remember { mutableStateOf(false) }
+    val downloadStatus by modelManager.downloadStatus.collectAsState(initial = DownloadStatus.Idle)
+
+    // Image Selection State
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var tempImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
     var tempImageUri = tempImageUriString?.let { Uri.parse(it) }
 
@@ -177,14 +187,15 @@ fun FinanceTrackerApp(
         }
     }
 
-    if (showDialog) {
+    // Add Transaction Dialog
+    if (showAddDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showAddDialog = false },
             title = { Text("Add Transaction") },
             text = { Text("Choose a method to add a receipt.") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    showAddDialog = false
                     permissionLauncher.launch(android.Manifest.permission.CAMERA)
                 }) {
                     Text("Take Photo")
@@ -192,7 +203,7 @@ fun FinanceTrackerApp(
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    showAddDialog = false
                     galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }) {
                     Text("Gallery")
@@ -212,22 +223,96 @@ fun FinanceTrackerApp(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
+            FloatingActionButton(onClick = { 
+                if (isModelDownloaded.value) {
+                    showAddDialog = true 
+                } else {
+                    showDownloadOverlay.value = true
+                }
+            }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
             }
         }
     ) { paddingValues ->
-        TransactionList(
-            transactions = transactions,
-            modifier = Modifier.padding(paddingValues)
-        )
+        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            TransactionList(
+                transactions = transactions,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Download Overlay UI
+            if (showDownloadOverlay.value && !isModelDownloaded.value) {
+                LaunchedEffect(downloadStatus) {
+                    if (downloadStatus is DownloadStatus.Downloaded) {
+                        isModelDownloaded.value = true
+                        showDownloadOverlay.value = false
+                    }
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            "Downloading AI Model (~450MB). Please stay on this screen...",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        when (val status = downloadStatus) {
+                            is DownloadStatus.Idle -> {
+                                Button(onClick = {
+                                    coroutineScope.launch {
+                                        modelManager.downloadModel()
+                                    }
+                                }) {
+                                    Text("Start Download")
+                                }
+                            }
+                            is DownloadStatus.Downloading -> {
+                                LinearProgressIndicator(
+                                    progress = status.progress,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("${(status.progress * 100).toInt()}%")
+                            }
+                            is DownloadStatus.Downloaded -> { /* Handled in LaunchedEffect */ }
+                            is DownloadStatus.Error -> {
+                                Text("Error: ${status.message}", color = MaterialTheme.colorScheme.error)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    coroutineScope.launch {
+                                        modelManager.downloadModel()
+                                    }
+                                }) {
+                                    Text("Retry Download")
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+                        OutlinedButton(onClick = { showDownloadOverlay.value = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
 @Composable
 fun TransactionList(transactions: List<Transaction>, modifier: Modifier = Modifier) {
     if (transactions.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(text = "No transactions yet", style = MaterialTheme.typography.bodyLarge)
         }
     } else {
