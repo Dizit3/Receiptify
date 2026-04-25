@@ -30,5 +30,9 @@ This file contains important context and instructions for AI agents working on t
 ### Environment and Build
 - The project development environment uses JDK 17.
 - Gradle commands in this environment are prone to timeouts and network failures. If the Gradle wrapper fails to download, a pre-installed global `gradle` (version 8.8) is available as a fallback.
-- GitHub Actions workflows are used for CI. Remember that the `secrets` context is not directly available in step-level `if` conditionals; map them to environment variables first.
 - The repository uses a custom `.githooks` directory. Enable them via `git config core.hooksPath .githooks` or `scripts/setup.sh` (if available).
+
+### App Delivery and Testing
+- **Delivery Method:** The project uses **GitHub Releases** for app delivery to the user's device.
+- **Obtainium:** The user uses the **Obtainium** Android app to track this repository.
+- **CI/CD:** Every push to the `main` branch triggers a GitHub Action that builds the APK and creates a new release. **Do not** use Telegram Bot API or other external messaging services for delivery unless explicitly requested.
