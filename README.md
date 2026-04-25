@@ -9,6 +9,35 @@ Welcome to the Offline Personal Finance Tracker! This Android application is des
 - **Offline First:** Your data never leaves your device. All processing and storage happen locally.
 - **Data Validation:** A Review Screen allows you to verify the extracted information before saving it to your records.
 
+## Project Roadmap & Features
+```mermaid
+graph TD
+    App[Receiptify App]
+    
+    subgraph Core[Core Engine]
+        AI[Gemma-4-E2B AI]:::done
+        DB[Room Database]:::done
+    end
+    
+    subgraph UI[User Interface]
+        HL[History List]:::done
+        SCAN[Receipt Scanning]:::planned
+        RS[Review Screen]:::planned
+    end
+    
+    subgraph DevOps[Delivery]
+        GHA[GitHub Actions CI]:::done
+        OBT[Obtainium Updates]:::done
+    end
+    
+    App --> Core
+    App --> UI
+    App --> DevOps
+    
+    classDef done fill:#9f9,stroke:#333,stroke-width:2px;
+    classDef planned fill:#ffd,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
+```
+
 ## Architecture & Tech Stack
 
 - **Language:** Kotlin
