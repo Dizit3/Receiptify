@@ -38,6 +38,25 @@ graph TD
     classDef planned fill:#ffd,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5;
 ```
 
+### Roadmap Checklist
+#### Core Engine
+- [x] On-Device AI Integration (Gemma-4-E2B)
+- [x] Local Storage (Room Database)
+- [ ] Model Auto-downloading System
+
+#### User Interface
+- [x] Transaction History List
+- [ ] Receipt Capture (Camera)
+- [ ] Gallery Image Selection
+- [ ] Review Screen (Data Validation)
+- [ ] Settings Screen
+
+#### DevOps & Delivery
+- [x] GitHub Actions CI/CD
+- [x] Automated Releases (Latest & Pre-releases)
+- [x] Obtainium Support
+- [x] CI Path-based Optimization
+
 ## Architecture & Tech Stack
 
 - **Language:** Kotlin
