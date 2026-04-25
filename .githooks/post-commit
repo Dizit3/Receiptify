@@ -1,16 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
-# Build and upload APK in the background
-(
-  # Load the bot token from local.properties
-  TELEGRAM_BOT_TOKEN=$(grep telegram_bot_token local.properties | cut -d'=' -f2)
-  if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
-    echo "TELEGRAM_BOT_TOKEN not found in local.properties"
-    exit 1
-  fi
-
-  ./gradlew assembleDebug && curl -F document=@"app/build/outputs/apk/debug/app-debug.apk" "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument?chat_id=531943531"
-) &
-
-# Push to GitHub in the background to trigger GitHub Actions
+# Push to GitHub in the background to trigger GitHub Actions (which creates the Release for Obtainium)
 git push origin HEAD &

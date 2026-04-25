@@ -8,9 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-      TELEGRAM_TO: ${{ secrets.TELEGRAM_TO }}
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v4
@@ -28,17 +27,23 @@ jobs:
     - name: Build Debug APK
       run: ./gradlew assembleDebug
 
-    - name: Upload Debug APK
+    - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
         path: app/build/outputs/apk/debug/app-debug.apk
 
-    - name: Send APK to Telegram
-      if: env.TELEGRAM_TOKEN != '' && env.TELEGRAM_TO != ''
-      uses: appleboy/telegram-action@master
+    - name: Create GitHub Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: softprops/action-gh-release@v2
       with:
-        to: ${{ env.TELEGRAM_TO }}
-        token: ${{ env.TELEGRAM_TOKEN }}
-        document: app/build/outputs/apk/debug/app-debug.apk
-        message: "New Debug APK build is ready!"
+        tag_name: v${{ github.run_number }}
+        name: "Build v${{ github.run_number }}"
+        files: app/build/outputs/apk/debug/app-debug.apk
+        body: |
+          🚀 New automated build ready!
+          
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+        draft: false
+        prerelease: false

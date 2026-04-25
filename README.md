@@ -45,3 +45,9 @@ This app requires the `gemma-4-E2B-it-int4` model file to function. Due to size 
 2. Open the project in Android Studio.
 3. Sync the project with Gradle files.
 4. Run the application on your target device or emulator.
+
+## Releases & Installation
+This project uses GitHub Actions to automatically build and release new versions of the application.
+
+- **Direct Download:** You can find the latest APKs in the [Releases](https://github.com/Dizit3/Receiptify/releases) section.
+- **Obtainium:** To get automatic updates, add this repository URL to [Obtainium](https://github.com/ImranR98/Obtainium). Every push to `main` will trigger a new build that Obtainium can detect.
