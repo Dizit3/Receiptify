@@ -2,6 +2,11 @@
 
 This file contains important context and instructions for AI agents working on this project.
 
+## Documentation Maintenance
+
+- **Stay Up-to-Date:** Agents **MUST** always verify the relevance of `README.md` and `AGENTS.md` after making changes. If a change impacts the project's features, architecture, or workflow, update the documentation accordingly.
+- **Mermaid Diagrams:** If the feature set changes, ensure the Mermaid graph in `README.md` is updated to reflect the current state (distinguishing between implemented and planned features).
+
 ## Core Directives
 
 1. **Strictly Offline Processing:** The primary goal of this app is to be a 100% offline personal finance tracker. **Do not** introduce any cloud-based APIs, external network calls for data processing, or traditional OCR services (like ML Kit) for receipt analysis.
@@ -36,3 +41,15 @@ This file contains important context and instructions for AI agents working on t
 - **Delivery Method:** The project uses **GitHub Releases** for app delivery to the user's device.
 - **Obtainium:** The user uses the **Obtainium** Android app to track this repository.
 - **CI/CD:** Every push to the `main` branch triggers a GitHub Action that builds the APK and creates a new release. **Do not** use Telegram Bot API or other external messaging services for delivery unless explicitly requested.
+
+## Multi-Agent Collaboration (Antigravity & Jules)
+
+- **Roles:** 
+    - **Antigravity (Local):** Responsible for high-level planning, architecture, documentation maintenance, and coordinating with Jules.
+    - **Jules (Remote):** Responsible for executing large coding tasks in the cloud.
+- **Workflow:** 
+    1. Antigravity creates an implementation plan in `docs/plans/`.
+    2. Antigravity triggers a Jules session using the `jules` CLI.
+    3. Jules implements the changes and creates a Pull Request or a branch.
+    4. Antigravity reviews and pulls the changes locally via `jules teleport` or `jules remote pull`.
+- **Communication:** Agents should check `docs/plans/` and the `task.md` roadmap to ensure they are working on the correct priorities.
