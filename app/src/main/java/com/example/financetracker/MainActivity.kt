@@ -1,20 +1,32 @@
 package com.example.financetracker
 
+import android.net.Uri
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
+import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,10 +36,9 @@ import com.example.financetracker.data.TransactionDao
 import com.example.financetracker.ui.ReviewScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 enum class Screen {
     History, Review
@@ -35,6 +46,21 @@ enum class Screen {
 
 class MainViewModel(private val transactionDao: TransactionDao) : ViewModel() {
     val transactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
+
+    fun onImageSelected(uri: Uri, context: Context, onBitmapLoaded: (Bitmap) -> Unit) {
+        try {
+            val bitmap: Bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                ImageDecoder.decodeBitmap(source)
+            } else {
+                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            }
+            Log.i("MainViewModel", "Successfully loaded bitmap from URI: $uri, dimensions: ${bitmap.width}x${bitmap.height}")
+            onBitmapLoaded(bitmap)
+        } catch (e: Exception) {
+            Log.e("MainViewModel", "Error loading bitmap from URI: $uri", e)
+        }
+    }
 }
 
 class MainViewModelFactory(private val transactionDao: TransactionDao) : ViewModelProvider.Factory {
@@ -64,15 +90,8 @@ class MainActivity : ComponentActivity() {
                     Screen.History -> {
                         FinanceTrackerApp(
                             factory = factory,
-                            onAddTransaction = {
-                                // Placeholder: In real app, this triggers AI analysis
-                                // For now, we mock a transition to ReviewScreen
-                                pendingTransaction = com.example.financetracker.data.Transaction(
-                                    shopName = "New Store",
-                                    date = "2024-04-25",
-                                    totalAmount = 0.0,
-                                    items = emptyList()
-                                )
+                            onResultReady = { transaction ->
+                                pendingTransaction = transaction
                                 currentScreen = Screen.Review
                             }
                         )
@@ -104,9 +123,83 @@ class MainActivity : ComponentActivity() {
 fun FinanceTrackerApp(
     factory: MainViewModelFactory, 
     viewModel: MainViewModel = viewModel(factory = factory),
-    onAddTransaction: () -> Unit
+    onResultReady: (Transaction) -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState(initial = emptyList())
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    var tempImageUriString by rememberSaveable { mutableStateOf<String?>(null) }
+    var tempImageUri = tempImageUriString?.let { Uri.parse(it) }
+
+    val handleImage = { uri: Uri ->
+        viewModel.onImageSelected(uri, context) { _ ->
+            // In a real app, this would trigger ReceiptAnalyzer
+            // For now, we mock a transaction result
+            val mockTransaction = Transaction(
+                shopName = "Recognized Shop",
+                date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
+                totalAmount = 12.34,
+                items = emptyList()
+            )
+            onResultReady(mockTransaction)
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            handleImage(uri)
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempImageUri != null) {
+            handleImage(tempImageUri!!)
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val storageDir = context.cacheDir
+            val imageFile = File.createTempFile("JPEG_${timeStamp}_", ".jpg", storageDir)
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
+            tempImageUriString = uri.toString()
+            cameraLauncher.launch(uri)
+        } else {
+            Log.w("MainActivity", "Camera permission denied")
+        }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Add Transaction") },
+            text = { Text("Choose a method to add a receipt.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    permissionLauncher.launch(android.Manifest.permission.CAMERA)
+                }) {
+                    Text("Take Photo")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showDialog = false
+                    galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    Text("Gallery")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -119,7 +212,7 @@ fun FinanceTrackerApp(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddTransaction) {
+            FloatingActionButton(onClick = { showDialog = true }) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Transaction")
             }
         }
